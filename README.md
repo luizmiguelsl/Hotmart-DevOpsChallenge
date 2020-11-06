@@ -19,7 +19,7 @@ To run this solution in your own AWS account:
 
 1 - Clone this repository to you linux machine.
     
-    git clone http://repourl
+    git clone https://github.com/luizmiguelsl/Hotmart-DevOpsChallenge
 
 2 - On AWS console, you need to create a user on IAM with Programmatic access and attach the AdministratorAccess policy to it. 
     Don't forget to save the Access key ID and the Secret Access Key.
@@ -55,6 +55,7 @@ The /test context, will show a page indicating that you are on the /test context
 
 
 8 - To destroy the solution run:
+    
     ./delete.sh Hotmart-DevOpsChallenge-VPC
     ./delete.sh Hotmart-DevOpsChallenge-Servers
 
