@@ -1,0 +1,282 @@
+Description: >
+    Luiz Lima / Cloud Systems-Devops Engineer
+    This template deploys a infrastructure in the created VPC. 
+    It deploys 2 autoscalling groups with at least 2 instances 
+    and at most 4, each instance running a single docker container, create and configure security groups. 
+    The AMI used in the launc configuration will have docker installed and will run the container created for this challenge. 
+    All instances in the autoscalling group will be spread accros AZs and will receive traffic trought a ALB. 
+    The autoscaling policy is high cpu comsumption
+    The root context / sends traffic to the instances on WebAppMainGroup
+    The /test context sends traffic to the instances on WebAppTestGroup
+    The instances size is t3.medium
+
+#Parameters that will be used in this file
+Parameters:
+    EnvironmentName:
+        Description: An environment name that will be prefixed to resource names
+        Type: String
+
+#SG to the ALB, opening tcp port 80 referencing the created VPC
+Resources:
+  LBSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to our load balancer
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-VPCID"
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+  
+  #SG to the EC2 Instances, opening ports tcp 80 and 22 referencing the created VPC
+  WebServerSecGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow http to our hosts and SSH from local only
+      VpcId:
+        Fn::ImportValue:
+          !Sub "${EnvironmentName}-VPCID"
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      - IpProtocol: tcp
+        FromPort: 22
+        ToPort: 22
+        CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+      - IpProtocol: tcp
+        FromPort: 0
+        ToPort: 65535
+        CidrIp: 0.0.0.0/0
+
+  #Launch Configuration responsible for installing docker on the ubuntu ami, using t3.medium as instance type, 
+  #with a 10gb ebs disk, running the container nginx-main-devops-hotmart:1.0 
+  WebAppMainLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          #Install docker
+          sudo apt-get update -y
+          sudo apt-get install -y \
+          apt-transport-https \
+          ca-certificates \
+          curl \
+          gnupg-agent \
+          software-properties-common
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update -y
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+          sudo docker run -d -p 80:80 luizmiguelsl/nginx-main-devops-hotmart:1.0
+      ImageId: ami-06e54d05255faf8f6
+      KeyName: hotmart-key
+      SecurityGroups:
+      - Ref: WebServerSecGroup
+      InstanceType: t3.medium
+      BlockDeviceMappings:
+      - DeviceName: "/dev/sdk"
+        Ebs:
+          VolumeSize: '10'
+  
+  #Creates the Autoscaling group in the private subnets created, using the target group created above
+  WebAppMainGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+      - Fn::ImportValue: 
+          !Sub "${EnvironmentName}-PRIV-NETS"
+      LaunchConfigurationName:
+        Ref: WebAppMainLaunchConfig
+      MinSize: '2'
+      MaxSize: '4'
+      TargetGroupARNs:
+      - Ref: WebAppMainTargetGroup
+      
+  #Creates the scaling policy which will launch a new instance, based on a cloudwatch alarm for high cpu usage above 90%
+  MainScaleOutPolicy:
+      Type: AWS::AutoScaling::ScalingPolicy
+      Properties:
+        AdjustmentType: ChangeInCapacity
+        AutoScalingGroupName: !Ref WebAppMainGroup
+        ScalingAdjustment: '1'
+  CPUMainAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: '10'
+      AlarmDescription: Alarm if CPU too high or metric disappears indicating instance is down
+      Period: '60'
+      AlarmActions:
+      - !Ref MainScaleOutPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: WebAppMainGroup
+      ComparisonOperator: GreaterThanThreshold
+      MetricName: CPUUtilization
+  
+  #Launch Configuration responsible for installing docker on the ubuntu ami, using t3.medium as instance type, 
+  #with a 10gb ebs disk, running the container nginx-test-devops-hotmart:1.0 
+  WebAppTestLaunchConfig:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          #Install docker
+          sudo apt-get update -y
+          sudo apt-get install -y \
+          apt-transport-https \
+          ca-certificates \
+          curl \
+          gnupg-agent \
+          software-properties-common
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update -y
+          sudo apt-get install -y docker-ce docker-ce-cli containerd.io
+          sudo docker run -d -p 80:80 luizmiguelsl/nginx-test-devops-hotmart:1.0
+      ImageId: ami-06e54d05255faf8f6
+      KeyName: hotmart-key
+      SecurityGroups:
+      - Ref: WebServerSecGroup
+      InstanceType: t3.medium
+      BlockDeviceMappings:
+      - DeviceName: "/dev/sdk"
+        Ebs:
+          VolumeSize: '10'
+  WebAppTestGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+      - Fn::ImportValue: 
+          !Sub "${EnvironmentName}-PRIV-NETS"
+      LaunchConfigurationName:
+        Ref: WebAppTestLaunchConfig
+      MinSize: '2'
+      MaxSize: '4'
+      TargetGroupARNs:
+      - Ref: WebAppTestTargetGroup
+
+  #Creates the scaling policy which will launch a new instance, based on a cloudwatch alarm for high cpu usage above 90%
+  TestScaleOutPolicy:
+      Type: AWS::AutoScaling::ScalingPolicy
+      Properties:
+          AdjustmentType: ChangeInCapacity
+          AutoScalingGroupName: !Ref WebAppTestGroup
+          ScalingAdjustment: '1'
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: '1'
+      Statistic: Average
+      Threshold: '10'
+      AlarmDescription: Alarm if CPU too high or metric disappears indicating instance is down
+      Period: '60'
+      AlarmActions:
+      - !Ref TestScaleOutPolicy
+      Namespace: AWS/EC2
+      Dimensions:
+      - Name: AutoScalingGroupName
+        Value:
+          Ref: WebAppTestGroup
+      ComparisonOperator: GreaterThanThreshold
+      MetricName: CPUUtilization
+  
+  #Creates a ALB on the public subnet, attaching the LBSecGroup created to it 
+  WebAppLB:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Subnets:
+      - Fn::ImportValue: !Sub "${EnvironmentName}-PUB1-SN"
+      - Fn::ImportValue: !Sub "${EnvironmentName}-PUB2-SN"
+      SecurityGroups:
+      - Ref: LBSecGroup
+  
+  #Configures the listener for the load balancer created above on port 80, 
+  #Setting up the default action to send traffic to the WebAppMainTargetGroup
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn:
+          Ref: WebAppMainTargetGroup
+      LoadBalancerArn:
+        Ref: WebAppLB
+      Port: '80'
+      Protocol: HTTP
+  
+  #Creating a rule to send traffic from /test to the WebAppTestTargetGroup
+  ALBTestListenerRule1:
+      Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      Properties:
+        Actions:
+        - Type: forward
+          TargetGroupArn: !Ref 'WebAppTestTargetGroup'
+        Conditions:
+        - Field: path-pattern
+          Values: [/test]
+        ListenerArn: !Ref 'Listener'
+        Priority: 1
+  
+  #Creating a rule to send traffic from /test to the WebAppTestTargetGroup
+  ALBTestListenerRule2:
+      Type: AWS::ElasticLoadBalancingV2::ListenerRule
+      Properties:
+        Actions:
+        - Type: forward
+          TargetGroupArn: !Ref 'WebAppTestTargetGroup'
+        Conditions:
+        - Field: path-pattern
+          Values: [/test/]
+        ListenerArn: !Ref 'Listener'
+        Priority: 2
+  
+
+  #Creates the HealthCheck rules for the WebAppMainTargetGroup on /
+  WebAppMainTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 8
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: 
+        Fn::ImportValue:
+          Fn::Sub: "${EnvironmentName}-VPCID"
+  
+  #Creates the HealthCheck rules for the WebAppTestTargetGroup on /test
+  WebAppTestTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 8
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 5
+      VpcId: 
+        Fn::ImportValue:
+          Fn::Sub: "${EnvironmentName}-VPCID"
+
