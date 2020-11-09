@@ -48,7 +48,7 @@ Now that you have AWS CLI properly set up, you can run the scripts that will cre
 7 - Finally, lets create our servers and ALB:
 
     Command executed to create our server stack:
-    ./create.sh Hotmart-DevOpsChallenge-VPC servers.yml servers.json
+    ./create.sh Hotmart-DevOpsChallenge-Servers servers.yml servers-parameters.json
 
 To test the solution, go to the console and get the DNS name for your load balancer. The root context / will show a page indicating that you are on the root / context.
 The /test context, will show a page indicating that you are on the /test context.
