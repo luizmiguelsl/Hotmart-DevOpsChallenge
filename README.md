@@ -35,6 +35,12 @@ To run this solution in your own AWS account:
 
 Now that you have AWS CLI properly set up, you can run the scripts that will create the infrastructure.
 
+Important: Give to the scripts downloaded execution permission:
+    
+    chmod u+x ./create.sh
+    chmod u+x ./delete.sh
+    chmod u+x ./update.sh
+
 6 - Now lets create our networking resources:
 
     Command executed to create our network stack
