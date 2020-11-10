@@ -57,6 +57,14 @@ If you refresh the page a couple of times, you'll see that the container id keep
     Wait until the Servers stack is done deleting everything and run:
     ./delete.sh Hotmart-DevOpsChallenge-VPC
 
+Optional - If you want to change something into the YAML files after the stack is already created, just run the update.sh script:
+
+    To update the network stack
+    ./update.sh Hotmart-DevOpsChallenge-VPC network.yml network-parameters.json 
+
+    To update the servers stack
+    ./update.sh Hotmart-DevOpsChallenge-Servers servers.yml servers-parameters.json
+
 Enjoy :)
 
 
