@@ -24,21 +24,16 @@ To run this solution in your own AWS account:
 2 - On AWS console, you need to create a user on IAM with Programmatic access and attach the AdministratorAccess policy to it. 
     Don't forget to save the Access key ID and the Secret Access Key.
 
-3 - After the user creation, install AWS CLI: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html
+3 - On AWS console, you need to create a key pair named hotmart-key on Oregon region, and save the private key file. This key will be used to access the servers created.
 
-4 - After AWS CLI installation, run the following command to set up the CLI with your recently created user: 
+4 - After the user creation, install AWS CLI: https://docs.aws.amazon.com/cli/latest/userguide/install-cliv2.html
+
+5 - After AWS CLI installation, run the following command to set up the CLI with your recently created user: 
 
     aws configure
     And inform the access key id and secret access key. 
 
 Now that you have AWS CLI properly set up, you can run the scripts that will create the infrastructure.
-
-5 - First, we will create the key, in case you want to connect to the ec2 instances
-    
-    Command executed to create the key
-    ./create_key.sh
-    
-   This command will create a private key named key.pem 
 
 6 - Now lets create our networking resources:
 
@@ -56,8 +51,8 @@ The /test context, will show a page indicating that you are on the /test context
 
 8 - To destroy the solution run:
     
-    ./delete.sh Hotmart-DevOpsChallenge-VPC
     ./delete.sh Hotmart-DevOpsChallenge-Servers
+    ./delete.sh Hotmart-DevOpsChallenge-VPC
 
 Enjoy :)
 
