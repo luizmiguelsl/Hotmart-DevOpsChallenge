@@ -53,6 +53,8 @@ If you refresh the page a couple of times, you'll see that the container id keep
 8 - To destroy the solution run:
     
     ./delete.sh Hotmart-DevOpsChallenge-Servers
+
+    Wait until the Servers stack is done deleting everything and run:
     ./delete.sh Hotmart-DevOpsChallenge-VPC
 
 Enjoy :)
