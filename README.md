@@ -40,7 +40,7 @@ Now that you have AWS CLI properly set up, you can run the scripts that will cre
     Command executed to create our network stack
     ./create.sh Hotmart-DevOpsChallenge-VPC network.yml network-parameters.json 
 
-7 - Finally, lets create our servers and ALB:
+7 - Finally, let's create our servers and ALB, but make sure that the network stack has finished the creation
 
     Command executed to create our server stack:
     ./create.sh Hotmart-DevOpsChallenge-Servers servers.yml servers-parameters.json
