@@ -46,7 +46,8 @@ Now that you have AWS CLI properly set up, you can run the scripts that will cre
     ./create.sh Hotmart-DevOpsChallenge-Servers servers.yml servers-parameters.json
 
 To test the solution, go to the console and get the DNS name for your load balancer. The root context / will show a page indicating that you are on the root / context.
-The /test context, will show a page indicating that you are on the /test context.
+The /test context will show a page indicating that you are on the /test context.
+If you refresh the page a couple of times, you'll see that the container id keeps changing, showing that the load balancer is working properly.
 
 
 8 - To destroy the solution run:
