@@ -65,6 +65,14 @@ Optional - If you want to change something into the YAML files after the stack i
     To update the servers stack
     ./update.sh Hotmart-DevOpsChallenge-Servers servers.yml servers-parameters.json
 
+
+Improvment Points:
+
+1 - Although we created a keypair, we didn't implement a bastion host to connect to the instances.
+2 - We can validate if the aws cli is installed and properly set up before running the scrips create.sh, delete.sh and update.sh
+3 - We can add to the YAML files a way to create the keypair and save the private key programmatically
+
+
 Enjoy :)
 
 
